@@ -20,3 +20,86 @@
     写一个相应的CatalinaAdaptor就可以了。
     
 7.1.2 Bootstrap的启动过程
+    Bootstrap是Tomcat的入口，正常情况下启动Tomcat就是调用Bootstrap的main方法，其代码如下：
+    /**
+     * Main method and entry point when starting Tomcat via the provided scripts.
+     * @param args Command line arguments to be processed
+     */
+    public static void main(String args[]) {
+        //daemon为成员变量，private static Bootstrap daemon = null;
+        if (daemon == null) {
+            // Don't set daemon until init() has completed
+            Bootstrap bootstrap = new Bootstrap();
+            try {
+                //初始化了ClassLoader，并用ClassLoader创建了Catalina实例，赋给catalinaDaemon变量
+                //后面对命令的操作都要使用catalinaDaemon来具体执行
+                bootstrap.init();
+            } catch (Throwable t) {
+                handleThrowable(t);
+                t.printStackTrace();
+                return;
+            }
+            daemon = bootstrap;
+        } else {
+            // When running as a service the call to stop will be on a new
+            // thread so make sure the correct class loader is used to prevent
+            // a range of class not found exceptions.
+            Thread.currentThread().setContextClassLoader(daemon.catalinaLoader);
+        }
+
+        try {
+            //如果main方法的参数为空，默认执行start
+            String command = "start";
+            if (args.length > 0) {
+                command = args[args.length - 1];
+            }
+            if (command.equals("startd")) {
+                args[args.length - 1] = "start";
+                daemon.load(args);
+                daemon.start();
+            } else if (command.equals("stopd")) {
+                args[args.length - 1] = "stop";
+                daemon.stop();
+            } else if (command.equals("start")) {
+                daemon.setAwait(true);
+                daemon.load(args);
+                daemon.start();
+            } else if (command.equals("stop")) {
+                daemon.stopServer(args);
+            } else if (command.equals("configtest")) {
+                daemon.load(args);
+                if (null==daemon.getServer()) {
+                    System.exit(1);
+                }
+                System.exit(0);
+            } else {
+                log.warn("Bootstrap: command \"" + command + "\" does not exist.");
+            }
+        } catch (Throwable t) {
+            // Unwrap the Exception for clearer error reporting
+            if (t instanceof InvocationTargetException &&
+                    t.getCause() != null) {
+                t = t.getCause();
+            }
+            handleThrowable(t);
+            t.printStackTrace();
+            System.exit(1);
+        }
+    }
+    对start命令的处理调用了三个方法：setAwait(true)、load(args)和start()。这三个方法内部都调用了Catalina的相应方法进行具体执行，只不过是用
+    反射来调用。start方法的代码如下：
+    /**
+     * Start the Catalina daemon.
+     */
+    public void start()
+        throws Exception {
+        //首先判断catalinaDaemon有没有被初始化，如果没有则调用init方法对其进行初始化。
+        if( catalinaDaemon==null ) init();
+        //使用Method进行反射调用Catalina的start方法。
+        Method method = catalinaDaemon.getClass().getMethod("start", (Class [] )null);
+        method.invoke(catalinaDaemon, (Object [])null);
+    }
+    Method是java.lang.reflect包里的类，代表一个具体的方法，可以使用其中的invoke方法来执行所代表的方法，invoke方法有两个参数，第一个参数是
+    Method方法所在的实体，第二个参数是可变参数用于Method方法执行时所需要的参数，所以上面的调用相当于((Catalina)catalinaDaemon).start()。
+    setAwait和load也用类似的方法调用了Catalina中的setAwait和load方法。
+    
