@@ -103,3 +103,87 @@
     Method方法所在的实体，第二个参数是可变参数用于Method方法执行时所需要的参数，所以上面的调用相当于((Catalina)catalinaDaemon).start()。
     setAwait和load也用类似的方法调用了Catalina中的setAwait和load方法。
     
+7.1.3 Catalina的启动过程
+    从上面的内容可以知道，Catalina的启动主要是调用setAwait、load和start方法来完成的。
+    setAwait方法用于设置Server启动完成后是否进入等待状态的标志，如果为true则进入，否则不进入。
+    load方法用于加载配置文件，创建并初始化Server。
+    start方法用于启动服务器。
+    
+    首先来看看setAwait方法，代码如下：
+    //org.apache.catalina.startup.Catalina
+    //protected boolean await = false;
+     public void setAwait(boolean b) {
+        await = b;
+    }
+    
+    Catalina的load方法根据config/server.xml创建了Server对象，并赋值给server属性，然后调用了server的init方法，代码如下：
+    //org.apache.catalina.startup.Catalina
+    public void load(){
+        long t1 = System.nanoTime();
+        
+        ....    //省略了创建server的代码，创建过程使用Digester完成
+        
+        // Start the new server
+        try {
+            getServer().init();
+        } catch (LifecycleException e) {
+            if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
+                throw new java.lang.Error(e);
+            } else {
+                log.error("Catalina.start", e);
+            }
+
+        }
+
+        long t2 = System.nanoTime();
+        if(log.isInfoEnabled()) {
+            //启动过程中，控制台中可以看到
+            log.info("Initialization processed in " + ((t2 - t1) / 1000000) + " ms");
+        }
+    }
+    
+    Catalina的start方法主要调用了server的start方法启动服务器，并根据await属性判断是否让程序进入等待状态，代码如下：
+    //org.apache.catalina.startup.Catalina
+    public void start(){
+        //首先判断Server是否存在，如果不存在则调用load来初始化Server
+        if (getServer() == null) {
+            load();
+        }
+        //如果调用load之后Server还不存在，启动失败。
+        if (getServer() == null) {
+            log.fatal("Cannot start server. Server instance is not configured.");
+            return;
+        }
+
+        long t1 = System.nanoTime();
+        // Start the new server
+        try {
+            //启动Server服务器
+            getServer().start();
+        } catch (LifecycleException e) {
+            log.fatal(sm.getString("catalina.serverStartFail"), e);
+            try {
+                getServer().destroy();
+            } catch (LifecycleException e1) {
+                log.debug("destroy() failed for failed Server ", e1);
+            }
+            return;
+        }
+
+        long t2 = System.nanoTime();
+        if(log.isInfoEnabled()) {
+            log.info("Server startup in " + ((t2 - t1) / 1000000) + " ms");
+        }
+        
+        ... //省略注册关闭钩子代码
+        
+        if (await) {
+            //await方法里面调用了Server的await方法，Server的await方法内部会执行一个while循环，这样程序就停到了await方法。
+            await();
+            //当await方法里面的while循环退出时，就执行该stop方法，从而关闭服务器。
+            stop();
+        }
+    }
+    
+7.1.4 Server的启动过程
+    
