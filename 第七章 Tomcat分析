@@ -9,4 +9,14 @@
     
     Tomcat里的Server由org.apache.catalina.startup.Catalina来管理，Catalina是整个Tomcat的管理类，它里面的三个方法load、start、stop分别用来
     管理整个服务器的生命周期，load方法用来根据conf/server.xml文件创建Server并调用Server的init方法进行初始化，start方法用于启动服务器，stop方
-    法用于停止服务器，start和stop方法在内部分别调用了Server的start和stop方法，load方法内部调用Server的init方法。
+    法用于停止服务器。
+    start和stop方法在内部分别调用了Server的start和stop方法，load方法内部调用Server的init方法，这三个方法都会按容器的结构逐层调用相应的方法，
+    比如，Server的start方法中会调用所有的Service中的start方法，Service中的start方法又会调用所有包含的Connector和Container的start方法，这样
+    整个服务器就启动了，init和stop方法也一样，这就是Tomcat生命周期的管理方式。
+    Catalina还有一个方法也很重要，那就是await方法，Catalina中的await方法直接调用了Server的await方法，这个方法的作用是进入一个循环，让主线程
+    不会退出。
+    不过Tomcat的入口main方法并不在Catalina类中，而是在org.apache.catalina.startup.Bootstrap中。Bootstrap的作用类似一个CatalinaAdaptor，
+    具体处理过程还是使用Catalina来完成，这么做的好处是可以把启动的入口和具体的管理类分开，从而可以很方便的创建多种启动方式，每种启动方式只需要
+    写一个相应的CatalinaAdaptor就可以了。
+    
+7.1.2 Bootstrap的启动过程
