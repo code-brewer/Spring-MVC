@@ -1,0 +1,85 @@
+1. 创建maven项目，在pom文件中加入以下依赖：
+    <dependency>
+  		<groupId>javax.servlet</groupId>
+  		<artifactId>javax.servlet-api</artifactId>
+  		<version>3.1.0</version>
+  		<scope>provided</scope>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.springframework</groupId>
+  		<artifactId>spring-webmvc</artifactId>
+  		<version>4.1.5.RELEASE</version>
+  	</dependency>
+    
+2. 在web.xml中加入spring mvc的前端控制器
+  <servlet>
+		<servlet-name>let'sGo</servlet-name>
+		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>let'sGo</servlet-name>
+		<url-pattern>/</url-pattern>
+	</servlet-mapping>
+  这里配置了一个叫let'sGo的Servlet，自动启动，然后mapping到所有请求。所配置的Servlet是DispatcherServlet类型，它就是Spring MVC的入口，
+  Spring MVC的本质就是一个Servlet。
+  在配置DispatcherServlet的时候可以设置contextConfigLocation参数来指定Spring MVC配置文件的位置，如果不指定，就使用默认位置
+  WEB-INF/[ServletName]-servlet.xml文件。本例的默认位置就是WEB-INF/let'sGo-servlet.xml
+  
+3. 创建Spring MVC的xml配置文件
+  首先在WEB-INF目录下新建let'sGo-servlet.xml文件，然后使用Spring MVC最简单的配置方式来进行配置
+  <?xml version="1.0" encoding="UTF-8"?>
+  <beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+      xmlns:p="http://www.springframework.org/schema/p"
+        xmlns:context="http://www.springframework.org/schema/context"
+        xmlns:mvc="http://www.springframework.org/schema/mvc"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans 
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context.xsd
+          http://www.springframework.org/schema/mvc 
+        http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+        
+      //配置此标签后Spring MVC会帮我们自动做一些注册组件之类的事情。
+      <mvc:annotation-driven/>
+      //扫描通过注释配置的类
+      <context:component-scan base-package="com.excelib" />
+  </beans>
+      扫描器中还可以通过配置context:include-filter的子标签来设置只扫描@Controller就可以了。配置如下：
+      <context:component-scan base-package="com.excelib" use-default-filters="false">
+        <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+      </context:component-scan>
+      如果没有配置ViewResolver，SpringMVC将默认使用org.springframework.web.servlet.view.InternalResourceViewResolver作为视图解释器，
+      而且prefix和suffix都为空。
+      
+4. 创建Controller和View
+    package com.excelib.controller;
+
+    import org.apache.commons.logging.Log;
+    import org.apache.commons.logging.LogFactory;
+    import org.springframework.stereotype.Controller;
+    import org.springframework.ui.Model;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestMethod;
+
+    @Controller
+    public class GoController {
+    private final Log logger = LogFactory.getLog(GoController.class);
+
+    @RequestMapping(value={"/"}, method={RequestMethod.HEAD})
+    public String head(){
+      return "go.jsp";
+    }
+
+    @RequestMapping(value={"/index","/"}, method={RequestMethod.GET})
+    public String index(Model model){
+      logger.info("========processed by index ========");
+      model.addAttribute("msg", "Go Go Go");
+      return "go.jsp";
+    }
+    }
+    
+    再在WEB-INF目录下创建一个go.jsp页面，在页面的body元素中添加${msg}
+    
+
