@@ -1,1 +1,8 @@
-
+1. DispatcherServlet的继承分析：
+    1. DispathcerServlet继承自FrameworkServlet
+    2. FrameworkServlet继承自HttpServletBean，实现ApplicationContextAware接口
+    3. HttpServletBean继承自HttpServlet，实现了EnvironmentCapable和EnvironmentAware接口
+    4. ApplicationContextAware、EnvironmentCapable和EnvironmentAware接口都继承自Aware接口
+    5. HttpServlet属于Java中的类，它继承自GenericServlet，而GenericServlet实现了Servlet和ServletConfig接口。
+2. xxxAware在spring里面表示对xxx可以感知，通俗解释就是：如果在某个类里面想要使用spring的一些东西，就可以通过实现xxxAware接口告诉spring，
+  spring看到后就会给你送过来，而接收的方式是通过实现接口唯一的方法setXXX。
